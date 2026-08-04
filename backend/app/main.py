@@ -39,6 +39,21 @@ app.include_router(admin.router)
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    
+    # Auto-seed if database is empty (ideal for free tier cloud environments)
+    from app.database import SessionLocal
+    from app.models import Country
+    db = SessionLocal()
+    try:
+        if db.query(Country).count() == 0:
+            logging.info("Empty database detected. Running auto-seeding...")
+            from app.seed_data import seed
+            seed()
+    except Exception as e:
+        logging.error("Startup auto-seeding failed: %s", e)
+    finally:
+        db.close()
+
     if os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
         from app.services.scheduler import start_scheduler
         start_scheduler()
