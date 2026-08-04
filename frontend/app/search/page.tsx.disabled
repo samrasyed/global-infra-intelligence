@@ -1,0 +1,109 @@
+"use client";
+
+import { useState } from "react";
+import { Search as SearchIcon } from "lucide-react";
+import { api } from "@/lib/api";
+import type { SearchResult } from "@/lib/types";
+import Link from "next/link";
+import { formatInfraCategory } from "@/lib/format";
+
+const EXAMPLES = [
+  "Chinese investments in Africa",
+  "semiconductor news in India",
+  "ports involving Chinese companies",
+  "power grid attacks",
+  "undersea cable incidents",
+];
+
+export default function SearchPage() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  async function runSearch(q: string) {
+    if (!q.trim()) return;
+    setQuery(q);
+    setLoading(true);
+    setSearched(true);
+    try {
+      const res = await api.search(q);
+      setResults(res.results);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="font-display text-xl font-semibold text-ink">Global AI Search</h1>
+        <p className="text-sm text-ink-muted mt-1">
+          Semantic search over indexed articles using vector similarity — try a natural-language query.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          runSearch(query);
+        }}
+        className="relative"
+      >
+        <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="e.g. Show Chinese investments in Africa"
+          className="w-full pl-11 pr-4 py-3 rounded-lg bg-surface-2 border border-border focus:border-signal/50 outline-none text-sm text-ink placeholder:text-ink-faint"
+        />
+      </form>
+
+      <div className="flex flex-wrap gap-2">
+        {EXAMPLES.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => runSearch(ex)}
+            className="px-3 py-1.5 rounded-md border border-border text-xs text-ink-muted hover:text-ink hover:border-border-strong transition-colors"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {loading && <div className="text-sm text-ink-muted">Searching…</div>}
+
+        {!loading &&
+          results.map((r) => (
+            <Link
+              key={r.article_id}
+              href={`/articles/${r.article_id}`}
+              className="glass-panel rounded-lg p-4 flex flex-col gap-2 hover:border-border-strong transition-colors block"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-ink">{r.title}</span>
+                {typeof r.relevance === "number" && (
+                  <span className="text-[11px] font-mono text-signal">{Math.round(r.relevance * 100)}%</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-ink-faint font-mono uppercase">
+                <span>{r.source}</span>
+                <span>·</span>
+                <span>{formatInfraCategory(r.infra_category)}</span>
+              </div>
+              {r.snippet && <p className="text-xs text-ink-muted line-clamp-2">{r.snippet}</p>}
+            </Link>
+          ))}
+
+        {!loading && searched && results.length === 0 && (
+          <div className="text-sm text-ink-muted glass-panel rounded-lg p-6">
+            No indexed results for that query yet. The vector index populates as articles are processed.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
