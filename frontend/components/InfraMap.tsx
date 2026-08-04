@@ -18,21 +18,39 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const getCountryColor = (score: number) => {
-  if (score === 0) return "rgba(71, 85, 105, 0.08)";
-  if (score > 80) return "rgba(239, 91, 78, 0.55)";
-  if (score > 60) return "rgba(240, 168, 60, 0.5)";
-  if (score > 40) return "rgba(234, 179, 8, 0.45)";
-  if (score > 20) return "rgba(76, 141, 255, 0.4)";
-  return "rgba(47, 214, 192, 0.35)";
+  if (score === 0) return "#475569";
+  if (score > 80) return "#ef5b4e";
+  if (score > 60) return "#f0a83c";
+  if (score > 40) return "#eab308";
+  if (score > 20) return "#4c8dff";
+  return "#2fd6c0";
+};
+
+const getCountryOpacity = (score: number) => {
+  if (score === 0) return 0.08;
+  if (score > 80) return 0.55;
+  if (score > 60) return 0.5;
+  if (score > 40) return 0.45;
+  if (score > 20) return 0.4;
+  return 0.35;
 };
 
 const getCountryBorderColor = (score: number) => {
-  if (score === 0) return "rgba(71, 85, 105, 0.12)";
-  if (score > 80) return "rgba(239, 91, 78, 0.75)";
-  if (score > 60) return "rgba(240, 168, 60, 0.75)";
-  if (score > 40) return "rgba(234, 179, 8, 0.7)";
-  if (score > 20) return "rgba(76, 141, 255, 0.7)";
-  return "rgba(47, 214, 192, 0.7)";
+  if (score === 0) return "#475569";
+  if (score > 80) return "#ef5b4e";
+  if (score > 60) return "#f0a83c";
+  if (score > 40) return "#eab308";
+  if (score > 20) return "#4c8dff";
+  return "#2fd6c0";
+};
+
+const getCountryBorderOpacity = (score: number) => {
+  if (score === 0) return 0.12;
+  if (score > 80) return 0.75;
+  if (score > 60) return 0.75;
+  if (score > 40) return 0.7;
+  if (score > 20) return 0.7;
+  return 0.7;
 };
 
 interface InfraMapProps {
@@ -46,7 +64,7 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
   const countryMap = new Map(countries.map((c) => [c.iso3?.toUpperCase(), c]));
 
   useEffect(() => {
-    fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json")
+    fetch("/countries.geo.json")
       .then((res) => res.json())
       .then((data) => setGeoJson(data))
       .catch((err) => console.error("Failed to load world GeoJSON:", err));
@@ -58,10 +76,10 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
     const score = country?.risk_score || 0;
     return {
       fillColor: getCountryColor(score),
+      fillOpacity: getCountryOpacity(score),
       weight: score > 0 ? 1.5 : 0.8,
-      opacity: 1,
       color: getCountryBorderColor(score),
-      fillOpacity: 1,
+      opacity: getCountryBorderOpacity(score),
     };
   };
 
@@ -77,7 +95,7 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
             <span>${country.name}</span>
             <span style="font-size: 10px; font-family: monospace; padding: 1px 4px; border-radius: 4px; background: #f1f5f9; border: 1px solid #cbd5e1;">${iso3}</span>
           </div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Region: ${country.region || "N/A"}</div>
+          <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Geopolitical risk profile active.</div>
           <div style="display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(226, 232, 240, 0.8); padding-top: 8px;">
             <span style="font-size: 11px; font-weight: 500;">Geopolitical Risk:</span>
             <span style="font-size: 11px; font-family: monospace; font-weight: 600; padding: 2px 6px; border-radius: 4px; color: #ffffff; background-color: ${getCountryBorderColor(country.risk_score)}">${country.risk_score} / 100</span>
@@ -98,9 +116,10 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
         },
         mouseout: (e: any) => {
           const l = e.target;
+          const targetScore = country?.risk_score || 0;
           l.setStyle({
-            fillOpacity: 1.0,
-            weight: 1.5,
+            fillOpacity: getCountryOpacity(targetScore),
+            weight: targetScore > 0 ? 1.5 : 0.8,
           });
         },
       });
@@ -116,13 +135,15 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
         mouseover: (e: any) => {
           const l = e.target;
           l.setStyle({
-            fillColor: "rgba(148, 163, 184, 0.15)",
+            fillColor: "#94a3b8",
+            fillOpacity: 0.15,
           });
         },
         mouseout: (e: any) => {
           const l = e.target;
           l.setStyle({
-            fillColor: "rgba(71, 85, 105, 0.08)",
+            fillColor: "#475569",
+            fillOpacity: 0.08,
           });
         },
       });
@@ -142,37 +163,39 @@ export default function InfraMap({ assets, countries }: InfraMapProps) {
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
       {geoJson && (
-        <GeoJSON
-          data={geoJson}
-          style={styleCountry}
-          onEachFeature={onEachFeature}
-        />
+        <>
+          <GeoJSON
+            data={geoJson}
+            style={styleCountry}
+            onEachFeature={onEachFeature}
+          />
+          {points.map((asset) => (
+            <CircleMarker
+              key={asset.id}
+              center={[asset.latitude as number, asset.longitude as number]}
+              radius={5}
+              pathOptions={{
+                color: "#ffffff",
+                fillColor: CATEGORY_COLORS[asset.category] || "#8996A9",
+                fillOpacity: 0.9,
+                weight: 1,
+              }}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <div className="font-semibold">{asset.name}</div>
+                  <div className="text-xs text-gray-500 mb-1">{formatInfraCategory(asset.category)}</div>
+                  {asset.country && (
+                    <Link href={`/countries/${asset.country.id}`} className="text-xs text-blue-600 hover:underline">
+                      {asset.country.name}
+                    </Link>
+                  )}
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </>
       )}
-      {points.map((asset) => (
-        <CircleMarker
-          key={asset.id}
-          center={[asset.latitude as number, asset.longitude as number]}
-          radius={5}
-          pathOptions={{
-            color: "#ffffff",
-            fillColor: CATEGORY_COLORS[asset.category] || "#8996A9",
-            fillOpacity: 0.9,
-            weight: 1,
-          }}
-        >
-          <Popup>
-            <div className="text-sm">
-              <div className="font-semibold">{asset.name}</div>
-              <div className="text-xs text-gray-500 mb-1">{formatInfraCategory(asset.category)}</div>
-              {asset.country && (
-                <Link href={`/countries/${asset.country.id}`} className="text-xs text-blue-600 hover:underline">
-                  {asset.country.name}
-                </Link>
-              )}
-            </div>
-          </Popup>
-        </CircleMarker>
-      ))}
     </MapContainer>
   );
 }
